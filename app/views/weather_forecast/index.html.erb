@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Weather Forecast</title>
+  <%= csrf_meta_tags %>
+  <%= csp_meta_tag %>
+  
+  <!-- Link to external CSS -->
+  <%= stylesheet_link_tag "application" %>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      background-color: #f0f4f8;
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #fff;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    h1 {
+      text-align: center;
+      color: #333;
+      font-size: 2em;
+      margin-bottom: 20px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      font-weight: bold;
+      color: #555;
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 10px;
+      font-size: 16px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      box-sizing: border-box;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      font-size: 18px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 10px;
+      position: relative;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    #loading-spinner {
+      position: absolute;
+      left: 35%;
+      top: 50%;
+      margin-top: -12px;
+      width: 24px;
+      height: 24px;
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #007bff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      display: none;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    #weather-result {
+      margin-top: 30px;
+      padding: 20px;
+      border-radius: 8px;
+      background-color: #f8f9fa;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+      display: none;
+    }
+
+    .error {
+      color: red;
+      font-weight: bold;
+    }
+
+    .from-cache {
+      color: #28a745;
+      font-weight: bold;
+    }
+
+    .weather-data {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 10px;
+    }
+
+    .weather-data div {
+      width: 30%;
+      text-align: center;
+      padding: 10px;
+      background-color: #e9ecef;
+      border-radius: 8px;
+    }
+
+    .weather-data div p {
+      margin: 5px 0;
+    }
+
+    .help-text {
+      font-size: 14px;
+      color: #6c757d;
+      margin-top: 5px;
+      background-color: #f8f9fa;
+      padding: 8px;
+      border-radius: 5px;
+    }
+
+    .help-text strong {
+      color: #343a40;
+    }
+  </style>
+
+  <script>
+    $(document).ready(function() {
+      // Bind the form submission to AJAX
+      $("#get_forecast_button").on("click", function(event) {
+        event.preventDefault(); // Prevent the form from submitting the normal way
+
+        // Show the spinner and hide the button text
+        var button = $(this);
+        button.prop("disabled", true);
+        var originalText = button.text(); // Store the original button text
+        button.text(""); // Remove the button text
+        $("#loading-spinner").show(); // Show the loading spinner inside the button
+
+        // Get the API URL entered by the user
+        var api_url = $("#api_url").val();
+        
+        // Perform the AJAX GET request to fetch weather data
+        $.ajax({
+          url: "/weather_forecast/show", // The endpoint
+          method: "GET",
+          data: { api_url: api_url }, // Send the API URL as a parameter
+          dataType: "json", // Expecting a JSON response
+          success: function(response) {
+            // On success, render the forecast details
+            if(response.weather_data) {
+              var weatherHtml = `
+                <h2>Weather Details</h2>
+                <div class="weather-data">
+                  <div>
+                    <p><strong>Temperature</strong></p>
+                    <p>${response.weather_data.temperature}°C</p>
+                  </div>
+                  <div>
+                    <p><strong>High</strong></p>
+                    <p>${response.weather_data.high}°C</p>
+                  </div>
+                  <div>
+                    <p><strong>Low</strong></p>
+                    <p>${response.weather_data.low}°F</p>
+                  </div>
+                </div>
+                ${response.from_cache ? "<p class='from-cache'>Data fetched from cache!</p>" : ""}
+              `;
+              $("#weather-result").html(weatherHtml).show(); // Update and show the result
+            }
+          },
+          error: function(xhr, status, error) {
+            // Handle errors
+            var errorMessage = xhr.responseJSON.error_message || "An error occurred.";
+            $("#weather-result").html("<p class='error'>" + errorMessage + "</p>").show();
+          },
+          complete: function() {
+            // Hide the spinner and reset the button text once the request is complete
+            $("#loading-spinner").hide();
+            button.prop("disabled", false);
+            button.text(originalText); // Reset button text to the original text
+          }
+        });
+      });
+    });
+  </script>
+</head>
+<body>
+  <div class="container">
+    <h1>Weather Forecast</h1>
+
+    <!-- Form to input API URL and get forecast -->
+    <div class="form-group">
+      <label for="api_url">Enter API URL (or leave default):</label>
+      <input type="text" id="api_url" name="api_url" value="<%= @api_url %>" placeholder="Enter city or ZIP code..." />
+    </div>
+
+    <div class="help-text">
+      <p><strong>Note:</strong> The <code>q</code> parameter can accept:</p>
+      <ul>
+        <li>US Zipcode</li>
+        <li>UK Postcode</li>
+        <li>Canada Postalcode</li>
+        <li>IP address</li>
+        <li>Latitude/Longitude (decimal degree)</li>
+        <li>City name (e.g., London, Paris)</li>
+      </ul>
+    </div>
+
+    <!-- Get Forecast Button -->
+    <button id="get_forecast_button" type="button">
+      Get Forecast
+      <div id="loading-spinner"></div>
+    </button>
+
+    <!-- Weather result display -->
+    <div id="weather-result"></div>
+  </div>
+</body>
+</html>
